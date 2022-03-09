@@ -6,6 +6,13 @@ Author: Georgianna James
 
 In this repo, I conduct a sentiment analysis on the Harry Potter series by J.K. Rowling, guided by an in-class exercise that can be found in the resources linked below. 
 
+To view the analysis:
+
+* [HP Sentiment Analysis MD File](./hp_sentiment_analysis.md)
+
+To view the code:
+
+* [HP Sentiment Analysis RMD File](hp_sentiment_analysis.Rmd)
 
 ## Required Packages
 
