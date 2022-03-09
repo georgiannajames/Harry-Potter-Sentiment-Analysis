@@ -1,0 +1,23 @@
+---
+title: "Harry Potter Sentiment Analysis"
+author: "Georgianna James"
+date: '2022-03-09'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(harrypotter)
+library(tidyverse)
+library(tidytext)
+```
+Bradley Boehmke's ```harrypotter``` package contains the text of the entire seven book Harry Potter series. The package consists of seven data sets, one for each novel, with the text stored as one character vector with each element representing a single chapter. 
+
+For my sentiment analysis, I combine all seven novels and store each word as a single token associated with the title of the book it is from. 
+
+```{r}
+```
+
