@@ -9,15 +9,167 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+# Set Up
+
+## Required Packages 
+
 ```{r}
 library(harrypotter)
 library(tidyverse)
 library(tidytext)
+
+theme_set(theme_minimal())
 ```
+## Creating Data Frame 
+
 Bradley Boehmke's ```harrypotter``` package contains the text of the entire seven book Harry Potter series. The package consists of seven data sets, one for each novel, with the text stored as one character vector with each element representing a single chapter. 
 
-For my sentiment analysis, I combine all seven novels and store each word as a single token associated with the title of the book it is from. 
+For my sentiment analysis, I combine all seven novels and store each word as a single token associated with the chapter and title of the book it is from. In order to do this, first, I created a character vector for the title of each book. Then I combined all of the individual novel data sets into a list and named them using my title character vector. Next, I make each book its own tibble and and merged them into ```book``` using the ```map_df()``` function. Then I converted ```book``` to a factor with a level for each Harry Potter novel. Because the original data contained a row for each chapter, I created a chapter column by grouping by book and setting ```chapter``` equal to ```row_number(book)```. Finally, I unnested the dataframe, making each word its own token. 
 
 ```{r}
+# names of each book
+hp_books <- c("philosophers_stone", "chamber_of_secrets",
+              "prisoner_of_azkaban", "goblet_of_fire",
+              "order_of_the_phoenix", "half_blood_prince",
+              "deathly_hallows")
+```
+
+
+```{r}
+# combine books into a list
+hp_words <- list(
+  philosophers_stone,
+  chamber_of_secrets,
+  prisoner_of_azkaban,
+  goblet_of_fire,
+  order_of_the_phoenix,
+  half_blood_prince,
+  deathly_hallows
+) %>%
+  # name each list element
+  set_names(hp_books) %>%
+  # convert each book to a data frame and merge into a single data frame
+  map_df(as_tibble, .id = "book") %>%
+  # convert book to a factor
+  mutate(book = factor(book, levels = hp_books)) %>%
+  # remove empty chapters
+  drop_na(value) %>%
+  # create a chapter id column
+  group_by(book) %>%
+  mutate(chapter = row_number(book)) %>%
+  ungroup() %>%
+  # tokenize the data frame
+  unnest_tokens(word, value)
+
+head(hp_words)
+```
+## Most Frequent Words, by book
+
+```{r}
+hp_words %>%
+  # delete stopwords
+  anti_join(stop_words) %>%
+  # summarize count per word per book
+  count(book, word) %>%
+  # get top 15 words per book
+  group_by(book) %>%
+  slice_max(order_by = n, n = 15) %>%
+  mutate(word = reorder_within(word, n, book)) %>%
+  # create barplot
+  ggplot(aes(x = word, y = n, fill = book)) + 
+  geom_col() +
+  scale_x_reordered() +
+  labs(title = "Most frequent words in Harry Potter",
+       x = NULL,
+       y = "Word count") +
+  facet_wrap(facets = vars(book), scales = "free") +
+  coord_flip() +
+  theme(legend.position = "none", axis.text=element_text(size=6))
+```
+
+# Generate data frame with sentiment derived from the Bing dictionary
+
+```{r}
+
+hp_sentiment_analysis <- get_sentiments("bing")
+
+
+harry_potter_sentiment_analysis <- left_join(hp_words, hp_sentiment_analysis, by = "word") %>% 
+  drop_na(sentiment)
+```
+
+```{r}
+harry_potter_sentiment_analysis %>% 
+  count(word, sentiment) %>%
+  group_by(sentiment) %>% 
+  slice_max(order_by = n, n = 10)
+```
+```{r}
+# all series
+harry_potter_sentiment_analysis %>% 
+  # generate frequency count for each word and sentiment
+  group_by(sentiment) %>%
+  count(word) %>%
+  # extract 10 most frequent pos/neg words
+  group_by(sentiment) %>%
+  slice_max(order_by = n, n = 10) %>%
+  # prep data for sorting each word independently by facet
+  mutate(word = reorder_within(word, n, sentiment)) %>%
+  # generate the bar plot
+  ggplot(aes(word, n, fill = sentiment)) +
+  geom_col(show.legend = FALSE) +
+  # used with reorder_within() to label the axis tick marks
+  scale_x_reordered() +
+  facet_wrap(facets = vars(sentiment), scales = "free_y") +
+  labs(
+    title = "Sentimental words used in the Harry Potter series",
+    x = NULL,
+    y = "Number of occurences in all seven books"
+  ) +
+  coord_flip()
+```
+```{r}
+# per book
+hp_pos_neg_book <- harry_potter_sentiment_analysis %>%
+  # generate frequency count for each book, word, and sentiment
+  group_by(book, sentiment) %>%
+  count(word) %>%
+  # extract 10 most frequent pos/neg words per book
+  group_by(book, sentiment) %>%
+  slice_max(order_by = n, n = 10)
+```
+
+
+```{r}
+## positive words
+hp_pos_neg_book %>%
+  filter(sentiment == "positive") %>%
+  mutate(word = reorder_within(word, n, book)) %>%
+  ggplot(aes(word, n, fill = book)) +
+  geom_col(show.legend = FALSE) +
+  scale_x_reordered() +
+  facet_wrap(facets = vars(book), scales = "free_y") +
+  labs(
+    title = "Positive words used in the Harry Potter series",
+    x = NULL,
+    y = "Number of occurences"
+  ) +
+  coord_flip()
+```
+```{r}
+## negative words
+hp_pos_neg_book %>%
+  filter(sentiment == "negative") %>%
+  mutate(word = reorder_within(word, n, book)) %>%
+  ggplot(aes(word, n, fill = book)) +
+  geom_col(show.legend = FALSE) +
+  scale_x_reordered() +
+  facet_wrap(facets = vars(book), scales = "free_y") +
+  labs(
+    title = "Negative words used in the Harry Potter series",
+    x = NULL,
+    y = "Number of occurences"
+  ) +
+  coord_flip()
 ```
 
