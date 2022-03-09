@@ -4,7 +4,7 @@ Author: Georgianna James
 
 ## Summary
 
-In this repo, I conduct a sentiment analysis on the Harry Potter series by J.K. Rowling.
+In this repo, I conduct a sentiment analysis on the Harry Potter series by J.K. Rowling, guided by an in-class exercise that can be found in the resources linked below. 
 
 
 ## Required Packages
