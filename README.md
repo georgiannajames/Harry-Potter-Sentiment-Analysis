@@ -9,6 +9,13 @@ In this repo, I conduct a sentiment analysis on the Harry Potter series by J.K. 
 
 ## Required Packages
 
+```
+library(harrypotter)
+library(tidyverse)
+library(tidytext)
+library(textdata)
+```
+
 ## Data
 
 Run the following code in your console to retrieve the Harry Potter package used in this repo:

@@ -2,7 +2,7 @@
 title: "Harry Potter Sentiment Analysis"
 author: "Georgianna James"
 date: '2022-03-09'
-output: html_document
+output: github_document
 ---
 
 ```{r setup, include=FALSE}
@@ -13,21 +13,29 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## Required Packages 
 
-```{r}
+```{r message=FALSE, warning=FALSE}
 library(harrypotter)
 library(tidyverse)
 library(tidytext)
+library(textdata)
 
 theme_set(theme_minimal())
 ```
+
+
+
 ## Creating Data Frame 
 
 Bradley Boehmke's ```harrypotter``` package contains the text of the entire seven book Harry Potter series. The package consists of seven data sets, one for each novel, with the text stored as one character vector with each element representing a single chapter. 
 
 For my sentiment analysis, I combine all seven novels and store each word as a single token associated with the chapter and title of the book it is from. In order to do this, first, I created a character vector for the title of each book. Then I combined all of the individual novel data sets into a list and named them using my title character vector. Next, I make each book its own tibble and and merged them into ```book``` using the ```map_df()``` function. Then I converted ```book``` to a factor with a level for each Harry Potter novel. Because the original data contained a row for each chapter, I created a chapter column by grouping by book and setting ```chapter``` equal to ```row_number(book)```. Finally, I unnested the dataframe, making each word its own token. 
 
+
+
+
 ```{r}
-# names of each book
+# character vector of titles of all books
+
 hp_books <- c("philosophers_stone", "chamber_of_secrets",
               "prisoner_of_azkaban", "goblet_of_fire",
               "order_of_the_phoenix", "half_blood_prince",
@@ -36,7 +44,7 @@ hp_books <- c("philosophers_stone", "chamber_of_secrets",
 
 
 ```{r}
-# combine books into a list
+# combine book data sets into a list
 hp_words <- list(
   philosophers_stone,
   chamber_of_secrets,
@@ -63,9 +71,15 @@ hp_words <- list(
 
 head(hp_words)
 ```
-## Most Frequent Words, by book
 
-```{r}
+
+
+## Visualization of Most Frequent Words, by book
+
+
+
+
+```{r most frequent words, echo=FALSE, message=FALSE, warning=FALSE, fig.height=10, fig.width=12}
 hp_words %>%
   # delete stopwords
   anti_join(stop_words) %>%
@@ -84,27 +98,29 @@ hp_words %>%
        y = "Word count") +
   facet_wrap(facets = vars(book), scales = "free") +
   coord_flip() +
-  theme(legend.position = "none", axis.text=element_text(size=6))
+  theme(legend.position = "none")
 ```
 
-# Generate data frame with sentiment derived from the Bing dictionary
+
+
+# Sentiment Analysis Using Bing Dictionary 
+
+### Generate data frame with sentiment derived from the Bing dictionary
 
 ```{r}
-
+# creating df from bBng dictionary
 hp_sentiment_analysis <- get_sentiments("bing")
 
+# joining by words from hp books that are also in the Bing dictionairy
 
 harry_potter_sentiment_analysis <- left_join(hp_words, hp_sentiment_analysis, by = "word") %>% 
   drop_na(sentiment)
 ```
 
-```{r}
-harry_potter_sentiment_analysis %>% 
-  count(word, sentiment) %>%
-  group_by(sentiment) %>% 
-  slice_max(order_by = n, n = 10)
-```
-```{r}
+
+## Most frequently used sentimental words, both positive and negative, in the whole series
+
+```{r pos and neg words in series, echo=FALSE}
 # all series
 harry_potter_sentiment_analysis %>% 
   # generate frequency count for each word and sentiment
@@ -128,10 +144,17 @@ harry_potter_sentiment_analysis %>%
   ) +
   coord_flip()
 ```
+
+
+
+### Generate a data frame that counts the frequency of each word by book and sentiment. 
+
+
+
 ```{r}
-# per book
+
 hp_pos_neg_book <- harry_potter_sentiment_analysis %>%
-  # generate frequency count for each book, word, and sentiment
+  # count freq for each book, word, and sentiment
   group_by(book, sentiment) %>%
   count(word) %>%
   # extract 10 most frequent pos/neg words per book
@@ -140,7 +163,10 @@ hp_pos_neg_book <- harry_potter_sentiment_analysis %>%
 ```
 
 
-```{r}
+
+## Most Frequently Used Positive Words, by book
+
+```{r echo=FALSE}
 ## positive words
 hp_pos_neg_book %>%
   filter(sentiment == "positive") %>%
@@ -156,7 +182,13 @@ hp_pos_neg_book %>%
   ) +
   coord_flip()
 ```
-```{r}
+
+
+
+## Most Frequently Used Negative Words, by book
+
+
+```{r echo=FALSE}
 ## negative words
 hp_pos_neg_book %>%
   filter(sentiment == "negative") %>%
@@ -172,4 +204,45 @@ hp_pos_neg_book %>%
   ) +
   coord_flip()
 ```
+
+
+
+# Sentiment Analysis Using AFINN Dictionary 
+
+### Generate data frame with sentiment derived from the AFINN dictionary
+
+```{r message=FALSE, warning=FALSE}
+# creating df from AFINN dictionary
+hp_afinn_sentiment_analysis <- get_sentiments("afinn") 
+  
+
+# joining by words from hp books that are also in the AFINN dictionairy
+
+hp_afinn_sentiment_analysis <- inner_join(hp_words, hp_afinn_sentiment_analysis, by = "word") %>% 
+  group_by(book, chapter) %>% 
+  summarize(value = sum(value))
+```
+
+## Emotional arc of Harry Potter books
+
+
+```{r echo=FALSE}
+
+hp_afinn_sentiment_analysis %>% 
+  ggplot(mapping = aes(x = chapter, y = value, fill = book)) +
+  geom_col() +
+  facet_wrap(facets = vars(book), scales = "free_x") +
+  labs(
+    title = "Emotional arc of Harry Potter books",
+    subtitle = "AFINN sentiment dictionary",
+    x = "Chapter",
+    y = "Emotional score"
+  ) +
+  theme(legend.position = "none")
+```
+
+
+### Interpretation:
+
+As most HP fans may expect, sentiment really shifts from mostly postitive to mostly negative as the series progresses. By Deathly Hollows, the sentiment score is negative almost the whole film. 
 
